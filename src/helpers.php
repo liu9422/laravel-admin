@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\MessageBag;
-
 if (!function_exists('admin_path')) {
 
     /**
@@ -291,7 +290,7 @@ if (!function_exists('prepare_options')) {
                 $value = $subArray['options'];
                 $original = array_merge($original, $subArray['original']);
                 $toReplace = array_merge($toReplace, $subArray['toReplace']);
-            } elseif (strpos($value, 'function(') === 0) {
+            } elseif (is_string($value) && str_starts_with($value, 'function(')) {
                 $original[] = $value;
                 $value = "%{$key}%";
                 $toReplace[] = "\"{$value}\"";

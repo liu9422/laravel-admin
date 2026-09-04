@@ -18,9 +18,17 @@ trait HasHooks
     /**
      * Initialization closure array.
      *
-     * @var []Closure
+     * @var Closure[]
      */
     protected static $initCallbacks;
+
+    /**
+     * Number of init callbacks registered at process level (outside of a
+     * request), captured on the first flush.
+     *
+     * @var int|null
+     */
+    protected static $initCallbackSeed;
 
     /**
      * Initialize with user pre-defined default disables, etc.
@@ -44,6 +52,22 @@ trait HasHooks
         foreach (static::$initCallbacks as $callback) {
             $callback($this);
         }
+    }
+
+    /**
+     * Flush the per-request state.
+     *
+     * @return void
+     *
+     * @see \Encore\Admin\Admin::flushState()
+     */
+    public static function flushState()
+    {
+        if (is_null(static::$initCallbackSeed)) {
+            static::$initCallbackSeed = count((array) static::$initCallbacks);
+        }
+
+        static::$initCallbacks = array_slice((array) static::$initCallbacks, 0, static::$initCallbackSeed);
     }
 
     /**

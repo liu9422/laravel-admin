@@ -25,6 +25,13 @@ class Tree implements Renderable
     protected $model;
 
     /**
+     * Current request path.
+     *
+     * @var string
+     */
+    protected $path;
+
+    /**
      * @var \Closure
      */
     protected $queryCallback;

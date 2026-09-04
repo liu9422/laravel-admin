@@ -132,7 +132,7 @@ class Grid
     public $perPage = 20;
 
     /**
-     * @var []callable
+     * @var callable[]
      */
     protected $renderingCallbacks = [];
 
@@ -162,9 +162,17 @@ class Grid
     /**
      * Initialization closure array.
      *
-     * @var []Closure
+     * @var Closure[]
      */
     protected static $initCallbacks = [];
+
+    /**
+     * Number of init callbacks registered at process level (outside of a
+     * request), captured on the first flush.
+     *
+     * @var int|null
+     */
+    protected static $initCallbackSeed;
 
     /**
      * Create a new grid instance.
@@ -219,6 +227,22 @@ class Grid
         foreach (static::$initCallbacks as $callback) {
             call_user_func($callback, $this);
         }
+    }
+
+    /**
+     * Flush the per-request state.
+     *
+     * @return void
+     *
+     * @see Admin::flushState()
+     */
+    public static function flushState()
+    {
+        if (is_null(static::$initCallbackSeed)) {
+            static::$initCallbackSeed = count(static::$initCallbacks);
+        }
+
+        static::$initCallbacks = array_slice(static::$initCallbacks, 0, static::$initCallbackSeed);
     }
 
     /**

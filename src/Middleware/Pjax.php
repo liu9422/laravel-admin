@@ -32,9 +32,14 @@ class Pjax
         }
 
         try {
-            $this->filterResponse($response, $request->header('X-PJAX-CONTAINER'))
+            // jquery-pjax always sends the container header; fall back to the
+            // default container so header-less pjax requests still work.
+            $container = $request->header('X-PJAX-CONTAINER') ?: '#pjax-container';
+
+            $this->filterResponse($response, $container)
                 ->setUriHeader($response, $request);
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
+            // Best effort: on failure the unfiltered response is returned.
         }
 
         return $response;

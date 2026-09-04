@@ -91,6 +91,18 @@ class AdminServiceProvider extends ServiceProvider
         Blade::directive('endbox', function ($expression) {
             return "'); echo \$box->render(); ?>";
         });
+
+        // Flush the per-request state after every request when running on a
+        // resident-memory runtime. Octane fires this event for all of its
+        // drivers, including FrankenPHP.
+        if (class_exists(\Laravel\Octane\Events\RequestTerminated::class)) {
+            $this->app['events']->listen(
+                \Laravel\Octane\Events\RequestTerminated::class,
+                function () {
+                    \Encore\Admin\Admin::flushState();
+                }
+            );
+        }
     }
 
     /**

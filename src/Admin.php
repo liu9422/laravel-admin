@@ -11,6 +11,7 @@ use Encore\Admin\Widgets\Navbar;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Facade;
 use InvalidArgumentException;
 
 /**
@@ -53,14 +54,27 @@ class Admin
     public static $extensions = [];
 
     /**
-     * @var []Closure
+     * @var Closure[]
      */
     protected static $bootingCallbacks = [];
 
     /**
-     * @var []Closure
+     * @var Closure[]
      */
     protected static $bootedCallbacks = [];
+
+    /**
+     * Number of booting/booted callbacks registered at process level
+     * (outside of a request), captured on the first flush.
+     *
+     * @var int|null
+     */
+    protected static $bootingCallbackSeed;
+
+    /**
+     * @var int|null
+     */
+    protected static $bootedCallbackSeed;
 
     /**
      * Returns the long version of Laravel-admin.
@@ -367,6 +381,57 @@ class Admin
     public static function booted(callable $callback)
     {
         static::$bootedCallbacks[] = $callback;
+    }
+
+    /**
+     * Flush the per-request state.
+     *
+     * Class statics survive between requests on resident-memory runtimes
+     * (Laravel Octane, FrankenPHP worker mode, `php artisan serve`), so any
+     * state collected during a request leaks into the next one. This is
+     * called at the start of every admin request by
+     * {@see \Encore\Admin\Middleware\Bootstrap}, and after each request when
+     * running under Octane.
+     *
+     * @return void
+     */
+    public static function flushState()
+    {
+        // Assets collected during the previous request.
+        static::$script = [];
+        static::$deferredScript = [];
+        static::$style = [];
+        static::$css = [];
+        static::$js = [];
+        static::$html = [];
+        static::$headerJs = [];
+        static::$minifyIgnores = [];
+
+        static::$metaTitle = null;
+        static::$favicon = null;
+
+        // Keep only the callbacks registered at process level, so that
+        // registrations repeated on every request by app/Admin/bootstrap.php
+        // cannot accumulate.
+        if (is_null(static::$bootingCallbackSeed)) {
+            static::$bootingCallbackSeed = count(static::$bootingCallbacks);
+            static::$bootedCallbackSeed = count(static::$bootedCallbacks);
+        }
+
+        static::$bootingCallbacks = array_slice(static::$bootingCallbacks, 0, static::$bootingCallbackSeed);
+        static::$bootedCallbacks = array_slice(static::$bootedCallbacks, 0, static::$bootedCallbackSeed);
+
+        Grid::flushState();
+        Form::flushState();
+        Grid\Column::flushState();
+        Grid\Tools\Selector::flushState();
+        Grid\Exporter::flushState();
+
+        // Drop the cached Admin instance, so menu and navbar are rebuilt
+        // for the current request.
+        Facade::clearResolvedInstance(static::class);
+
+        app()->forgetInstance(static::class);
     }
 
     /**

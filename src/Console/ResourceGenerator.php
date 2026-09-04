@@ -21,14 +21,42 @@ class ResourceGenerator
     ];
 
     /**
+     * Raw database column type to field type category mapping.
+     *
+     * Replaces the former doctrine/dbal type mapping, which Laravel 11+
+     * no longer supports. Covers MySQL, SQL Server and common PostgreSQL
+     * type names; unknown types fall back to "string".
+     *
      * @var array
      */
-    private $doctrineTypeMapping = [
-        'string' => [
-            'enum', 'geometry', 'geometrycollection', 'linestring',
-            'polygon', 'multilinestring', 'multipoint', 'multipolygon',
-            'point',
-        ],
+    protected static $columnTypeMap = [
+        // strings
+        'varchar' => 'string', 'char' => 'string', 'nvarchar' => 'string', 'nchar' => 'string',
+        'enum' => 'string', 'set' => 'string', 'uniqueidentifier' => 'string', 'uuid' => 'string',
+        'geometry' => 'string', 'point' => 'string', 'linestring' => 'string', 'polygon' => 'string',
+        'geometrycollection' => 'string', 'multipoint' => 'string', 'multilinestring' => 'string',
+        'multipolygon' => 'string',
+        // text
+        'text' => 'text', 'tinytext' => 'text', 'mediumtext' => 'text', 'longtext' => 'text',
+        'ntext' => 'text', 'citext' => 'text',
+        // integers
+        'int' => 'integer', 'integer' => 'integer', 'bigint' => 'bigint', 'bigserial' => 'bigint',
+        'smallint' => 'smallint', 'tinyint' => 'integer', 'serial' => 'integer', 'year' => 'integer',
+        // floats
+        'decimal' => 'decimal', 'numeric' => 'decimal', 'money' => 'decimal', 'smallmoney' => 'decimal',
+        'float' => 'float', 'double' => 'float', 'double precision' => 'float', 'real' => 'float',
+        // date & time
+        'date' => 'date', 'datetime' => 'datetime', 'datetime2' => 'datetime', 'smalldatetime' => 'datetime',
+        'timestamp' => 'timestamp', 'timestamptz' => 'timestamp', 'timestamp without time zone' => 'timestamp',
+        'timestamp with time zone' => 'timestamp',
+        'time' => 'time', 'time without time zone' => 'time', 'time with time zone' => 'time',
+        // json
+        'json' => 'json', 'jsonb' => 'json',
+        // binary
+        'blob' => 'blob', 'tinyblob' => 'blob', 'mediumblob' => 'blob', 'longblob' => 'blob',
+        'binary' => 'blob', 'varbinary' => 'blob', 'bytea' => 'blob',
+        // boolean
+        'bit' => 'boolean', 'bool' => 'boolean', 'boolean' => 'boolean',
     ];
 
     /**
@@ -83,12 +111,12 @@ class ResourceGenerator
         $output = '';
 
         foreach ($this->getTableColumns() as $column) {
-            $name = $column->getName();
+            $name = $column['name'];
             if (in_array($name, $reservedColumns)) {
                 continue;
             }
-            $type = $column->getType()->getName();
-            $default = $column->getDefault();
+            $type = $this->getColumnType($column);
+            $default = $column['default'];
 
             $defaultValue = '';
 
@@ -166,7 +194,7 @@ class ResourceGenerator
         $output = '';
 
         foreach ($this->getTableColumns() as $column) {
-            $name = $column->getName();
+            $name = $column['name'];
 
             // set column label
             $label = $this->formatLabel($name);
@@ -184,7 +212,7 @@ class ResourceGenerator
         $output = '';
 
         foreach ($this->getTableColumns() as $column) {
-            $name = $column->getName();
+            $name = $column['name'];
             $label = $this->formatLabel($name);
 
             $output .= sprintf($this->formats['grid_column'], $name, $label);
@@ -207,37 +235,32 @@ class ResourceGenerator
     /**
      * Get columns of a giving model.
      *
-     * @throws \Exception
-     *
-     * @return \Doctrine\DBAL\Schema\Column[]
+     * @return array[]
      */
     protected function getTableColumns()
     {
-        if (!$this->model->getConnection()->isDoctrineAvailable()) {
-            throw new \Exception(
-                'You need to require doctrine/dbal: ~2.3 in your own composer.json to get database columns. '
-            );
-        }
-
         $table = $this->model->getConnection()->getTablePrefix().$this->model->getTable();
-        /** @var \Doctrine\DBAL\Schema\MySqlSchemaManager $schema */
-        $schema = $this->model->getConnection()->getDoctrineSchemaManager($table);
 
-        // custom mapping the types that doctrine/dbal does not support
-        $databasePlatform = $schema->getDatabasePlatform();
+        return $this->model->getConnection()->getSchemaBuilder()->getColumns($table);
+    }
 
-        foreach ($this->doctrineTypeMapping as $doctrineType => $dbTypes) {
-            foreach ($dbTypes as $dbType) {
-                $databasePlatform->registerDoctrineTypeMapping($dbType, $doctrineType);
-            }
+    /**
+     * Map a raw database column type to a field type category.
+     *
+     * @param array $column A column entry from Schema::getColumns()
+     *
+     * @return string
+     */
+    protected function getColumnType(array $column)
+    {
+        $typeName = strtolower($column['type_name'] ?? '');
+
+        // MySQL TINYINT(1) is the conventional boolean column.
+        if ($typeName === 'tinyint' && str_contains(strtolower($column['type'] ?? ''), 'tinyint(1)')) {
+            return 'boolean';
         }
 
-        $database = null;
-        if (strpos($table, '.')) {
-            list($database, $table) = explode('.', $table);
-        }
-
-        return $schema->listTableColumns($table, $database);
+        return static::$columnTypeMap[$typeName] ?? 'string';
     }
 
     /**

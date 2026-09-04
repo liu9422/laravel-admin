@@ -140,9 +140,13 @@ trait HasAssets
 
         $skin = config('admin.skin', 'skin-blue-light');
 
-        array_unshift(static::$baseCss, "vendor/laravel-admin/AdminLTE/dist/css/skins/{$skin}.min.css");
-
-        return static::$baseCss;
+        // Prepend the skin without mutating the shared static storage:
+        // on resident-memory runtimes a mutating getter accumulates one
+        // skin entry per rendered request.
+        return array_merge(
+            ["vendor/laravel-admin/AdminLTE/dist/css/skins/{$skin}.min.css"],
+            static::$baseCss
+        );
     }
 
     /**
@@ -235,11 +239,6 @@ trait HasAssets
             ->unique()
             ->map(function ($line) {
                 return $line;
-                //@see https://stackoverflow.com/questions/19509863/how-to-remove-js-comments-using-php
-                $pattern = '/(?:(?:\/\*(?:[^*]|(?:\*+[^*\/]))*\*+\/)|(?:(?<!\:|\\\|\')\/\/.*))/';
-                $line = preg_replace($pattern, '', $line);
-
-                return preg_replace('/\s+/', ' ', $line);
             });
 
         return view('admin::partials.script', compact('script'));
@@ -287,7 +286,7 @@ trait HasAssets
     protected static function getManifestData($key)
     {
         if (!empty(static::$manifestData)) {
-            return static::$manifestData[$key];
+            return static::$manifestData[$key] ?? null;
         }
 
         static::$manifestData = json_decode(
@@ -295,7 +294,7 @@ trait HasAssets
             true
         );
 
-        return static::$manifestData[$key];
+        return static::$manifestData[$key] ?? null;
     }
 
     /**

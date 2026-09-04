@@ -49,6 +49,13 @@ class Column
     protected $original;
 
     /**
+     * Cast name for sortable.
+     *
+     * @var string
+     */
+    protected $cast;
+
+    /**
      * Attributes of column.
      *
      * @var array
@@ -77,7 +84,7 @@ class Column
     protected static $originalGridModels;
 
     /**
-     * @var []Closure
+     * @var Closure[]
      */
     protected $displayCallbacks = [];
 
@@ -135,6 +142,21 @@ class Column
     public static function define($name, $definition)
     {
         static::$defined[$name] = $definition;
+    }
+
+    /**
+     * Flush the per-request state.
+     *
+     * @return void
+     *
+     * @see \Encore\Admin\Admin::flushState()
+     */
+    public static function flushState()
+    {
+        static::$originalGridModels = null;
+        static::$model = null;
+        static::$htmlAttributes = [];
+        static::$rowAttributes = [];
     }
 
     /**

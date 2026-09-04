@@ -28,6 +28,21 @@ class Selector implements Renderable
     }
 
     /**
+     * Flush the per-request state.
+     *
+     * Without this, a worker's first request would cache its `_selector`
+     * input and leak it into every following request.
+     *
+     * @return void
+     *
+     * @see \Encore\Admin\Admin::flushState()
+     */
+    public static function flushState()
+    {
+        static::$selected = null;
+    }
+
+    /**
      * @param string         $column
      * @param string|array   $label
      * @param array|\Closure $options

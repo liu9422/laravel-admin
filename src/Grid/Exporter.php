@@ -39,6 +39,18 @@ class Exporter
     protected static $exporter;
 
     /**
+     * Flush the per-request state.
+     *
+     * @return void
+     *
+     * @see \Encore\Admin\Admin::flushState()
+     */
+    public static function flushState()
+    {
+        static::$exporter = null;
+    }
+
+    /**
      * Create a new Exporter instance.
      *
      * @param Grid $grid
