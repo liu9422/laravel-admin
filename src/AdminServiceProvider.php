@@ -8,6 +8,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Encore\Admin\Form\Field\Editor;
 
 class AdminServiceProvider extends ServiceProvider
 {
@@ -42,6 +43,7 @@ class AdminServiceProvider extends ServiceProvider
      */
     protected $routeMiddleware = [
         'admin.auth'       => Middleware\Authenticate::class,
+        'admin.headers'    => Middleware\SecurityHeaders::class,
         'admin.pjax'       => Middleware\Pjax::class,
         'admin.log'        => Middleware\LogOperation::class,
         'admin.permission' => Middleware\Permission::class,
@@ -56,6 +58,7 @@ class AdminServiceProvider extends ServiceProvider
      */
     protected $middlewareGroups = [
         'admin' => [
+            'admin.headers',
             'admin.auth',
             'admin.pjax',
             'admin.log',
@@ -81,6 +84,8 @@ class AdminServiceProvider extends ServiceProvider
         }
 
         $this->registerPublishing();
+
+        Form::extend('editor', Editor::class);
 
         $this->compatibleBlade();
 

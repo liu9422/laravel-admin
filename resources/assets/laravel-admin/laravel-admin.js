@@ -5,6 +5,71 @@ if (!$.fn.size) {
     $.fn.size = function () { return this.length; };
 }
 
+// sweetalert2 v8 → v11 兼容层(2026-09-07 组件现代化升级 7.x→11.x):
+// v11 仅暴露 window.Swal,type 选项更名 icon,字符串速记调用已移除。
+// fork 内部代码与存量业务 js 继续以 swal(...) 风格调用,在此统一归一。
+var laSwalCompat = function () {
+    if (typeof Swal !== 'function') {
+        return $.Deferred().reject('sweetalert2 not loaded');
+    }
+    var args = Array.prototype.slice.call(arguments), opt = {};
+    if (args.length === 1 && typeof args[0] === 'object' && args[0]) {
+        opt = $.extend({}, args[0]);
+        if ('type' in opt) { opt.icon = opt.type; delete opt.type; }
+        // 维持 v7 观感:确认按钮默认红色(v11 默认蓝),未显式指定时补回
+        if (typeof opt.confirmButtonColor === 'undefined') { opt.confirmButtonColor = '#DD6B55'; }
+    } else {
+        if (typeof args[0] === 'string') { opt.title = args[0]; }
+        if (typeof args[1] === 'string') { opt.html = args[1]; }
+        if (typeof args[2] === 'string') { opt.icon = args[2]; }
+    }
+    return Swal.fire(opt);
+};
+window.swal = laSwalCompat;
+
+// toastr(停更)→ sweetalert2 Toast 兼容层(2026-09-07):
+// fork 内部与存量业务 js 继续以 toastr.success/error(...) / $.admin.toastr 调用,
+// 底层统一走 Swal toast;toastr.options 赋值与链式 .css() 形态兼容。
+var laToastr = {
+    options: {
+        closeButton: true,
+        progressBar: true,
+        showMethod: 'slideDown',
+        timeOut: 4000
+    },
+    _ret: {
+        css: function () { return laToastr._ret; },
+        remove: function () { return laToastr._ret; }
+    },
+    _fire: function (type, message, title, options) {
+        options = options || {};
+        var posMap = {
+            'toast-top-right': 'top-end', 'toast-top-left': 'top-start',
+            'toast-top-center': 'top', 'toast-bottom-right': 'bottom-end',
+            'toast-bottom-left': 'bottom-start', 'toast-bottom-center': 'bottom'
+        };
+        var conf = {
+            toast: true,
+            position: posMap[options.positionClass] || 'top-end',
+            icon: type,
+            html: message,
+            showConfirmButton: false,
+            timer: options.timeOut || laToastr.options.timeOut || 4000,
+            showCloseButton: options.closeButton === true || laToastr.options.closeButton === true,
+            // 类型 class 供彩底醒目样式(la-toast-{success|error|warning|info})
+            customClass: { popup: 'la-toast-' + type }
+        };
+        if (title) { conf.title = title; }
+        if (typeof Swal === 'function') { Swal.fire(conf); }
+        return laToastr._ret;
+    },
+    success: function (m, t, o) { return laToastr._fire('success', m, t, o); },
+    error: function (m, t, o) { return laToastr._fire('error', m, t, o); },
+    warning: function (m, t, o) { return laToastr._fire('warning', m, t, o); },
+    info: function (m, t, o) { return laToastr._fire('info', m, t, o); }
+};
+window.toastr = laToastr;
+
 $.fn.editable.defaults.params = function (params) {
     params._token = LA.token;
     params._editable = 1;
@@ -163,8 +228,8 @@ $('#totop').on('click', function (e) {
 
     $.fn.admin = LA;
     $.admin = LA;
-    $.admin.swal = swal;
-    $.admin.toastr = toastr;
+    $.admin.swal = laSwalCompat;
+    $.admin.toastr = laToastr;
     $.admin.grid = new Grid();
 
     $.admin.reload = function () {

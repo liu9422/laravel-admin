@@ -17,7 +17,8 @@ class File extends Field
      * @var array
      */
     protected static $css = [
-        '/vendor/laravel-admin/bootstrap-fileinput/css/fileinput.min.css?v=4.5.2',
+        '/vendor/laravel-admin/bootstrap-icons/bootstrap-icons.css',
+        '/vendor/laravel-admin/bootstrap-fileinput/css/fileinput.min.css?v=5.5.4',
     ];
 
     /**
@@ -26,8 +27,7 @@ class File extends Field
      * @var array
      */
     protected static $js = [
-        '/vendor/laravel-admin/bootstrap-fileinput/js/plugins/canvas-to-blob.min.js',
-        '/vendor/laravel-admin/bootstrap-fileinput/js/fileinput.min.js?v=4.5.2',
+        '/vendor/laravel-admin/bootstrap-fileinput/js/fileinput.min.js?v=5.5.4',
     ];
 
     /**
@@ -240,6 +240,8 @@ EOT;
         }
 
         $this->options(['overwriteInitial' => true, 'msgPlaceholder' => trans('admin.choose_file')]);
+
+        $this->setupFileinputLocale();
 
         $this->setupDefaultOptions();
 

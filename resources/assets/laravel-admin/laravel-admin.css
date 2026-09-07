@@ -83,3 +83,81 @@ a.editable-empty {
 .file-input .glyphicon-folder-open {
     display: inline;
 }
+
+/*
+ * 组件现代化观感微调(2026-09-07,sweetalert2 v11 / flatpickr):
+ * - swal2 toast 默认 10px 字号过小 → 放大到正文级
+ * - 行内编辑 datetime(flatpickr inline 于 popover)面板宽度/高度修正
+ */
+.swal2-toast {
+    font-size: 14px;
+    padding: 12px 16px;
+}
+.swal2-toast .swal2-title {
+    font-size: 14px;
+    margin: 0;
+}
+.swal2-toast .swal2-html-container {
+    font-size: 13px;
+    margin: 0;
+}
+.swal2-toast .swal2-icon {
+    width: 28px;
+    height: 28px;
+    margin: 0 10px 0 0;
+}
+.swal2-toast .swal2-icon .swal2-icon-content {
+    font-size: 2em;
+}
+
+/* 醒目 toast:浅彩底 + 左侧类型色条 + 同系深色文字(2026-09-07,类名由 laToastr
+   兼容层挂载)。icon 保持 swal2 原生透明底——success 勾是 CSS 动画绘制,
+   叠不透明背景会破坏动画遮罩(表现为转动前后颜色跳变),故不加背景。 */
+.swal2-toast.la-toast-success { --la-toast-bg: #e8f5e9; --la-toast-bar: #4caf50; --la-toast-fg: #1b5e20; }
+.swal2-toast.la-toast-error   { --la-toast-bg: #ffebee; --la-toast-bar: #f44336; --la-toast-fg: #b71c1c; }
+.swal2-toast.la-toast-warning { --la-toast-bg: #fff8e1; --la-toast-bar: #ff9800; --la-toast-fg: #e65100; }
+.swal2-toast.la-toast-info    { --la-toast-bg: #e3f2fd; --la-toast-bar: #2196f3; --la-toast-fg: #0d47a1; }
+.swal2-toast[class*="la-toast-"] {
+    background: var(--la-toast-bg) !important;
+    border-left: 6px solid var(--la-toast-bar);
+}
+.swal2-toast[class*="la-toast-"] .swal2-title,
+.swal2-toast[class*="la-toast-"] .swal2-html-container {
+    color: var(--la-toast-fg);
+}
+
+/* 行内编辑 datetime:flatpickr inline 面板(默认容器 250px/290px,日历会溢出) */
+.ie-content .ie-container:has(.flatpickr-calendar.inline) {
+    width: 300px;
+    height: auto;
+}
+.ie-content .flatpickr-calendar.inline {
+    width: 100%;
+}
+
+/* fileinput 整块"拖拽+点击"形态(2026-09-07 组件现代化 C):拖拽区放大虚线、悬停高亮 */
+.file-drop-zone {
+    min-height: 170px;
+    border: 2px dashed #c5cbd3;
+    border-radius: 8px;
+    padding: 26px 12px;
+    margin: 8px 0 4px;
+    background: #fafbfc;
+    transition: border-color .2s ease, background-color .2s ease;
+    cursor: pointer;
+}
+.file-drop-zone:hover,
+.file-drop-zone.clickable:hover,
+.file-drop-zone:focus-within {
+    border-color: #409eff;
+    background: #f0f7ff;
+}
+.file-drop-zone .file-drop-zone-title {
+    font-size: 15px;
+    color: #5a626a;
+    line-height: 1.6;
+}
+.file-preview {
+    border: 1px solid #e2e6ea;
+    border-radius: 6px;
+}

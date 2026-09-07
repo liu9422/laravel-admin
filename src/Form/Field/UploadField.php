@@ -114,13 +114,17 @@ trait UploadField
         $defaults = [
             'overwriteInitial'     => false,
             'initialPreviewAsData' => true,
+            'initialPreviewShowDelete' => true,
             'msgPlaceholder'       => trans('admin.choose_file'),
             'browseLabel'          => trans('admin.browse'),
             'cancelLabel'          => trans('admin.cancel'),
             'showRemove'           => false,
             'showUpload'           => false,
             'showCancel'           => false,
-            'dropZoneEnabled'      => false,
+            'dropZoneEnabled'      => true,
+            'showCaption'          => false,
+            'browseOnZoneClick'    => true,
+            'showBrowse'           => !($this->options['showPreview'] ?? true),
             'deleteExtraData'      => [
                 $this->formatName($this->column) => static::FILE_DELETE_FLAG,
                 static::FILE_DELETE_FLAG         => '',
@@ -129,13 +133,37 @@ trait UploadField
             ],
         ];
 
-        if ($this->form instanceof Form) {
-            $defaults['deleteUrl'] = $this->form->resource().'/'.$this->form->model()->getKey();
+        foreach ($defaults as $key => $value) {
+            if (!array_key_exists($key, $this->options)) {
+                $this->options[$key] = $value;
+            }
         }
 
-        $defaults = array_merge($defaults, ['fileActionSettings' => $this->fileActionSettings]);
+        if ($this->form instanceof Form && !array_key_exists('deleteUrl', $this->options)) {
+            $this->options['deleteUrl'] = $this->form->resource().'/'.$this->form->model()->getKey();
+        }
 
-        $this->options($defaults);
+        $this->options['fileActionSettings'] = $this->fileActionSettings;
+    }
+
+    /**
+     * 按应用 locale 注入 fileinput 语言(zh 需要 locale 文件与 language 选项)。
+     *
+     * @return void
+     */
+    protected function setupFileinputLocale()
+    {
+        $locale = config('app.locale');
+
+        $lang = $locale === 'zh-CN' ? 'zh' : ($locale === 'zh-TW' ? 'zh-TW' : null);
+
+        if (!$lang) {
+            return;
+        }
+
+        $this->options(['language' => $lang]);
+
+        \Encore\Admin\Admin::js('/vendor/laravel-admin/bootstrap-fileinput/js/locales/'.$lang.'.js');
     }
 
     /**

@@ -4,16 +4,16 @@ namespace Encore\Admin\Form\Field;
 
 use Encore\Admin\Form\Field;
 
-class Editor extends Field
+class Editor extends Textarea
 {
     protected static $js = [
-        '//cdn.ckeditor.com/4.5.10/standard/ckeditor.js',
+        '/vendor/laravel-admin/ckeditor/ckeditor.js',
     ];
 
     public function render()
     {
-        $this->script = "CKEDITOR.replace('{$this->id}');";
-
+        $this->rows = 18;
+        $this->script = "CKEDITOR.config.versionCheck = false; CKEDITOR.replace('{$this->id}');";
         return parent::render();
     }
 }

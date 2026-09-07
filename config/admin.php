@@ -407,4 +407,36 @@ return [
     'extensions' => [
 
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | HTTP security headers
+    |--------------------------------------------------------------------------
+    |
+    | Headers appended to every response of the admin routes. Each entry maps
+    | a header name to its value; set a value to null/false to omit that
+    | header, or add any custom header (e.g. a Content-Security-Policy).
+    |
+    | The defaults are conservative so existing admin pages keep working:
+    |
+    |   - 'X-Content-Type-Options' => 'nosniff'                  (zero impact)
+    |   - 'Referrer-Policy' => 'strict-origin-when-cross-origin' (zero impact)
+    |   - 'X-Frame-Options' => 'SAMEORIGIN' forbids embedding the admin
+    |     into another domain's iframe; set it to null if the admin is
+    |     intentionally embedded on other origins.
+    |
+    | Note: existing installations do NOT need to re-publish this file to get
+    | the defaults - the middleware falls back to them when the key is absent.
+    | To tighten security further (e.g. against XSS), add a
+    | 'Content-Security-Policy-Report-Only' first and inspect browser
+    | violations before enforcing a real policy, since admin pages often
+    | render third-party widgets.
+    |
+    */
+    'security_headers' => [
+        'enabled'                => true,
+        'X-Content-Type-Options' => 'nosniff',
+        'Referrer-Policy'        => 'strict-origin-when-cross-origin',
+        'X-Frame-Options'        => 'SAMEORIGIN',
+    ],
 ];
