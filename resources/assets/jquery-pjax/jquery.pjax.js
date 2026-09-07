@@ -429,7 +429,7 @@ function onPjaxPopstate(event) {
   }
 
   var previousState = pjax.state
-  var state = event.state
+  var state = event.state !== undefined ? event.state : (event.originalEvent && event.originalEvent.state)
   var direction
 
   if (state && state.container) {
@@ -936,7 +936,7 @@ function disable() {
 
 // Add the state property to jQuery's event object so we can use it in
 // $(window).bind('popstate')
-if ( $.inArray('state', $.event.props) < 0 )
+if ( $.event.props && $.inArray('state', $.event.props) < 0 )
   $.event.props.push('state')
 
 // Is pjax supported by this browser?

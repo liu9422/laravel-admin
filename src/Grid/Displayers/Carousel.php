@@ -14,7 +14,7 @@ class Carousel extends AbstractDisplayer
             $this->value = $this->value->toArray();
         }
 
-        $this->value = array_values($this->value);
+        $this->value = array_values((array) $this->value);
 
         if (empty($this->value)) {
             return '';

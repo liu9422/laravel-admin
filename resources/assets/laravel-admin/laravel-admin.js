@@ -1,3 +1,10 @@
+// jQuery 3 兼容垫片(2026-09-07 安全升级 jQ2.1→3.7):
+// jQ3 已删除 .size()(1.8 起废弃);停更组件(eonasdan datetimepicker、
+// bootstrap3-editable)仍调用——补等义垫片,行为与 jQ2 一致
+if (!$.fn.size) {
+    $.fn.size = function () { return this.length; };
+}
+
 $.fn.editable.defaults.params = function (params) {
     params._token = LA.token;
     params._editable = 1;
