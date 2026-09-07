@@ -25,8 +25,31 @@ class UserController extends AdminController
     protected function grid()
     {
         $userModel = config('admin.database.users_model');
+        $roleModel = config('admin.database.roles_model');
 
         $grid = new Grid(new $userModel());
+
+        $grid->disableExport();
+        $grid->expandFilter();
+
+        $grid->filter(function (Grid\Filter $filter) use ($roleModel) {
+            $filter->disableIdFilter();
+
+            $filter->column(0.5, function (Grid\Filter $filter) {
+                $filter->like('username', trans('admin.username'));
+                $filter->like('name', trans('admin.name'));
+            });
+
+            $filter->column(0.5, function (Grid\Filter $filter) use ($roleModel) {
+                $filter->where(function ($query) use ($roleModel) {
+                    // 角色表名可配置(admin.database.roles_table),不能写死
+                    $table = (new $roleModel)->getTable();
+                    $query->whereHas('roles', function ($query) use ($table) {
+                        $query->where($table.'.id', $this->input);
+                    });
+                }, trans('admin.roles'))->select($roleModel::all()->pluck('name', 'id'));
+            });
+        });
 
         $grid->column('id', 'ID')->sortable();
         $grid->column('username', trans('admin.username'));
@@ -94,7 +117,6 @@ class UserController extends AdminController
         $userTable = config('admin.database.users_table');
         $connection = config('admin.database.connection');
 
-        $form->display('id', 'ID');
         $form->text('username', trans('admin.username'))
             ->creationRules(['required', "unique:{$connection}.{$userTable}"])
             ->updateRules(['required', "unique:{$connection}.{$userTable},username,{{id}}"]);

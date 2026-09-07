@@ -68,6 +68,10 @@ trait HasHooks
         }
 
         static::$initCallbacks = array_slice((array) static::$initCallbacks, 0, static::$initCallbackSeed);
+
+        // 字段资产收集缓存属请求级:常驻运行时下不清会沿用首个请求的收集结果
+        // (字段注册表若随请求变化,后续请求会拿到陈旧资产集)
+        static::$collectedAssets = [];
     }
 
     /**

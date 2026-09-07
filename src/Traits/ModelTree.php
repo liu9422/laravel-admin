@@ -211,19 +211,31 @@ trait ModelTree
      */
     public static function saveOrder($tree = [], $parentId = 0)
     {
-        if (empty(static::$branchOrder)) {
+        // 最外层(携带完整树)才建立排序映射;children 递归复用。
+        // 常驻内存下 static 会跨请求存活:若不清空,第二次保存会因
+        // branchOrder 非空而跳过重建,沿用上一次的旧映射(顺序错乱)。
+        // finally 保证无论正常/异常返回都清空,下个请求/下次保存自愈。
+        $isRoot = empty(static::$branchOrder);
+
+        if ($isRoot) {
             static::setBranchOrder($tree);
         }
 
-        foreach ($tree as $branch) {
-            $node = static::find($branch['id']);
+        try {
+            foreach ($tree as $branch) {
+                $node = static::find($branch['id']);
 
-            $node->{$node->getParentColumn()} = $parentId;
-            $node->{$node->getOrderColumn()} = static::$branchOrder[$branch['id']];
-            $node->save();
+                $node->{$node->getParentColumn()} = $parentId;
+                $node->{$node->getOrderColumn()} = static::$branchOrder[$branch['id']];
+                $node->save();
 
-            if (isset($branch['children'])) {
-                static::saveOrder($branch['children'], $branch['id']);
+                if (isset($branch['children'])) {
+                    static::saveOrder($branch['children'], $branch['id']);
+                }
+            }
+        } finally {
+            if ($isRoot) {
+                static::$branchOrder = null;
             }
         }
     }
