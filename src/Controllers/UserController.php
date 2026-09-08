@@ -2,6 +2,10 @@
 
 namespace Encore\Admin\Controllers;
 
+use Encore\Admin\Actions\Administrator\Disable;
+use Encore\Admin\Actions\Administrator\Enable;
+use Encore\Admin\Auth\Database\Administrator;
+use Encore\Admin\Facades\Admin;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
 use Encore\Admin\Show;
@@ -55,12 +59,28 @@ class UserController extends AdminController
         $grid->column('username', trans('admin.username'));
         $grid->column('name', trans('admin.name'));
         $grid->column('roles', trans('admin.roles'))->pluck('name')->label();
+        $grid->column('status', trans('admin.status'))->display(function ($status) {
+            if ($status === null || (int) $status === Administrator::STATUS_ACTIVE) {
+                return '<span class="label label-success">'.trans('admin.enabled').'</span>';
+            }else{
+                return '<span class="label label-danger">'.trans('admin.disabled').'</span>';
+            }
+        });
         $grid->column('created_at', trans('admin.created_at'));
         $grid->column('updated_at', trans('admin.updated_at'));
 
         $grid->actions(function (Grid\Displayers\Actions $actions) {
-            if ($actions->getKey() == 1) {
+            $key = (int) $actions->getKey();
+
+            if ($key == 1) {
                 $actions->disableDelete();
+            }
+
+            $status = $actions->row->status;
+            if ($status !== null && (int) $status === Administrator::STATUS_BANNED) {
+                $actions->add(new Enable());
+            } elseif ($key !== 1 && $key !== (int) Admin::user()->id) {
+                $actions->add(new Disable());
             }
         });
 

@@ -2,6 +2,7 @@
 
 namespace Encore\Admin\Controllers;
 
+use Encore\Admin\Auth\Database\Administrator;
 use Encore\Admin\Facades\Admin;
 use Encore\Admin\Form;
 use Encore\Admin\Layout\Content;
@@ -48,6 +49,17 @@ class AuthController extends Controller
         $remember = $request->input('remember', false);
 
         if ($this->guard()->attempt($credentials, $remember)) {
+            $user = $this->guard()->user();
+            $status = $user ? ($user->status ?? null) : null;
+
+            if ($status !== null && (int) $status !== Administrator::STATUS_ACTIVE) {
+                $this->guard()->logout();
+
+                return back()->withInput()->withErrors([
+                    $this->username() => trans('admin.login_banned'),
+                ]);
+            }
+
             return $this->sendLoginResponse($request);
         }
 

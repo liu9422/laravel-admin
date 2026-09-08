@@ -24,8 +24,31 @@ class RoleController extends AdminController
     protected function grid()
     {
         $roleModel = config('admin.database.roles_model');
+        $permissionModel = config('admin.database.permissions_model');
 
         $grid = new Grid(new $roleModel());
+
+        $grid->disableExport();
+        $grid->expandFilter();
+
+        $grid->filter(function (Grid\Filter $filter) use ($permissionModel) {
+            $filter->disableIdFilter();
+
+            $filter->column(0.5, function (Grid\Filter $filter) {
+                $filter->like('slug', trans('admin.slug'));
+                $filter->like('name', trans('admin.name'));
+            });
+
+            $filter->column(0.5, function (Grid\Filter $filter) use ($permissionModel) {
+                $filter->where(function ($query) use ($permissionModel) {
+                    // 权限表名可配置(admin.database.permissions_table),不能写死
+                    $table = (new $permissionModel)->getTable();
+                    $query->whereHas('permissions', function ($query) use ($table) {
+                        $query->where($table.'.id', $this->input);
+                    });
+                }, trans('admin.permissions'))->select($permissionModel::all()->pluck('name', 'id'));
+            });
+        });
 
         $grid->column('id', 'ID')->sortable();
         $grid->column('slug', trans('admin.slug'));
@@ -87,8 +110,6 @@ class RoleController extends AdminController
         $roleModel = config('admin.database.roles_model');
 
         $form = new Form(new $roleModel());
-
-        $form->display('id', 'ID');
 
         $form->text('slug', trans('admin.slug'))->rules('required');
         $form->text('name', trans('admin.name'))->rules('required');

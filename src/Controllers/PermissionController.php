@@ -28,6 +28,22 @@ class PermissionController extends AdminController
 
         $grid = new Grid(new $permissionModel());
 
+        $grid->disableExport();
+        $grid->expandFilter();
+
+        $grid->filter(function (Grid\Filter $filter) {
+            $filter->disableIdFilter();
+
+            $filter->column(0.5, function (Grid\Filter $filter) {
+                $filter->like('slug', trans('admin.slug'));
+                $filter->like('name', trans('admin.name'));
+            });
+
+            $filter->column(0.5, function (Grid\Filter $filter) {
+                $filter->like('http_path', trans('admin.route'));
+            });
+        });
+
         $grid->column('id', 'ID')->sortable();
         $grid->column('slug', trans('admin.slug'));
         $grid->column('name', trans('admin.name'));
@@ -123,8 +139,6 @@ class PermissionController extends AdminController
         $permissionModel = config('admin.database.permissions_model');
 
         $form = new Form(new $permissionModel());
-
-        $form->display('id', 'ID');
 
         $form->text('slug', trans('admin.slug'))->rules('required');
         $form->text('name', trans('admin.name'))->rules('required');

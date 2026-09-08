@@ -23,25 +23,31 @@ class LogController extends AdminController
     {
         $grid = new Grid(new OperationLog());
 
+        $grid->disableExport();
+        $grid->expandFilter();
+
         $grid->model()->orderBy('id', 'DESC');
 
         $grid->column('id', 'ID')->sortable();
-        $grid->column('user.name', 'User');
-        $grid->column('method')->display(function ($method) {
+        $grid->column('user.name', trans('admin.user'));
+        $grid->column('method', trans('admin.http.method'))->display(function ($method) {
             $color = Arr::get(OperationLog::$methodColors, $method, 'grey');
 
             return "<span class=\"badge bg-$color\">$method</span>";
         });
-        $grid->column('path')->label('info');
-        $grid->column('ip')->label('primary');
-        $grid->column('input')->display(function ($input) {
+        $grid->column('path', trans('admin.http.path'))->label('info');
+        $grid->column('ip', trans('admin.ip'))->label('primary');
+        $grid->column('input', trans('admin.input'))->display(function ($input) {
             $input = json_decode($input, true);
             $input = Arr::except($input, ['_pjax', '_token', '_method', '_previous_']);
             if (empty($input)) {
                 return '<code>{}</code>';
             }
-
-            return '<pre>'.json_encode($input, JSON_PRETTY_PRINT | JSON_HEX_TAG).'</pre>';
+            $json = json_encode($input, JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return sprintf(
+                '<pre title="点击展开/收起" style="cursor:pointer;white-space:pre-wrap;word-break:break-all;max-width:380px;max-height:64px;overflow:hidden;margin:0;padding:4px 6px;border:1px solid #eee;border-radius:3px;background:#f9f9f9;font-size:12px" onclick="if (this.style.maxHeight === \'360px\') { this.style.maxHeight = \'64px\'; this.style.overflow = \'hidden\'; } else { this.style.maxHeight = \'360px\'; this.style.overflow = \'auto\'; }">%s</pre>',
+                $json
+            );
         });
 
         $grid->column('created_at', trans('admin.created_at'));
@@ -56,10 +62,17 @@ class LogController extends AdminController
         $grid->filter(function (Grid\Filter $filter) {
             $userModel = config('admin.database.users_model');
 
-            $filter->equal('user_id', 'User')->select($userModel::all()->pluck('name', 'id'));
-            $filter->equal('method')->select(array_combine(OperationLog::$methods, OperationLog::$methods));
-            $filter->like('path');
-            $filter->equal('ip');
+            $filter->disableIdFilter();
+
+            $filter->column(0.5, function (Grid\Filter $filter) use ($userModel) {
+                $filter->equal('user_id', trans('admin.user'))->select($userModel::all()->pluck('name', 'id'));
+                $filter->equal('method', trans('admin.http.method'))->select(array_combine(OperationLog::$methods, OperationLog::$methods));
+            });
+
+            $filter->column(0.5, function (Grid\Filter $filter) {
+                $filter->like('path', trans('admin.http.path'));
+                $filter->equal('ip', trans('admin.ip'));
+            });
         });
 
         return $grid;

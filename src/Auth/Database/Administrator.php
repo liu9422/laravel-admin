@@ -19,8 +19,9 @@ class Administrator extends Model implements AuthenticatableContract
     use Authenticatable;
     use HasPermissions;
     use DefaultDatetimeFormat;
-
-    protected $fillable = ['username', 'password', 'name', 'avatar'];
+    const STATUS_ACTIVE = 1;
+    const STATUS_BANNED = 0;
+    protected $fillable = ['username', 'password', 'name', 'avatar', 'status'];
 
     /**
      * Create a new Eloquent model instance.

@@ -3,6 +3,7 @@
 namespace Encore\Admin\Middleware;
 
 use Closure;
+use Encore\Admin\Auth\Database\Administrator;
 use Encore\Admin\Facades\Admin;
 
 class Authenticate
@@ -22,6 +23,11 @@ class Authenticate
         $redirectTo = admin_base_path(config('admin.auth.redirect_to', 'auth/login'));
 
         if (Admin::guard()->guest() && !$this->shouldPassThrough($request)) {
+            return redirect()->to($redirectTo);
+        }
+        $user = Admin::guard()->user();
+        if ($user && $user->status !== null && (int) $user->status !== Administrator::STATUS_ACTIVE) {
+            Admin::guard()->logout();
             return redirect()->to($redirectTo);
         }
 
