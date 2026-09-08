@@ -1,13 +1,23 @@
 // jQuery 3 兼容垫片(2026-09-07 安全升级 jQ2.1→3.7):
 // jQ3 已删除 .size()(1.8 起废弃);停更组件(eonasdan datetimepicker、
-// bootstrap3-editable)仍调用——补等义垫片,行为与 jQ2 一致
+// bootstrap3-editable)仍调用,行为与 jQ2 一致
 if (!$.fn.size) {
     $.fn.size = function () { return this.length; };
 }
 
-// sweetalert2 v8 → v11 兼容层(2026-09-07 组件现代化升级 7.x→11.x):
-// v11 仅暴露 window.Swal,type 选项更名 icon,字符串速记调用已移除。
-// fork 内部代码与存量业务 js 继续以 swal(...) 风格调用,在此统一归一。
+(function ($) {
+    var _offset = $.fn.offset;
+
+    $.fn.offset = function (options) {
+        var el = this[0];
+
+        if (options === undefined && el && (el === window || el.nodeType === 9)) {
+            return { top: 0, left: 0 };
+        }
+
+        return _offset.apply(this, arguments);
+    };
+})(jQuery);
 var laSwalCompat = function () {
     if (typeof Swal !== 'function') {
         return $.Deferred().reject('sweetalert2 not loaded');
@@ -27,9 +37,6 @@ var laSwalCompat = function () {
 };
 window.swal = laSwalCompat;
 
-// toastr(停更)→ sweetalert2 Toast 兼容层(2026-09-07):
-// fork 内部与存量业务 js 继续以 toastr.success/error(...) / $.admin.toastr 调用,
-// 底层统一走 Swal toast;toastr.options 赋值与链式 .css() 形态兼容。
 var laToastr = {
     options: {
         closeButton: true,

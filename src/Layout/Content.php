@@ -304,12 +304,116 @@ class Content implements Renderable
         $items = [
             'header'      => $this->title,
             'description' => $this->description,
-            'breadcrumb'  => $this->breadcrumb,
+            'breadcrumb'  => $this->breadcrumb ?: $this->defaultBreadcrumb(),
             '_content_'   => $this->build(),
             '_view_'      => $this->view,
             '_user_'      => $this->getUserData(),
         ];
 
         return view('admin::content', $items)->render();
+    }
+
+    /**
+     * 默认面包屑(替代旧的"URL 段直拼",产出可读语义):
+     * 首页 / [父菜单…] 菜单标题 / 动作(编辑|创建|显示)。
+     * 纯数字 id 段一律剔除;动作取自 URL 尾段(edit/create)或详情页(id 结尾)。
+     *
+     * @return array
+     */
+    protected function defaultBreadcrumb()
+    {
+        if (!config('admin.enable_default_breadcrumb', true)) {
+            return [];
+        }
+
+        $breadcrumb = [[
+            'icon' => 'fa-dashboard',
+            'text' => trans('admin.home'),
+            'url'  => '/',
+        ]];
+
+        $segments = request()->segments();
+        array_shift($segments); // 去掉 admin 路由前缀
+
+        $action = null;
+
+        if ($segments && in_array(end($segments), ['edit', 'create'], true)) {
+            $action = array_pop($segments);
+        } elseif ($segments && ctype_digit(end($segments))) {
+            // 详情页 URL 以记录 id 结尾
+            $action = 'show';
+            array_pop($segments);
+        }
+
+        // 剔除残留的纯数字段(嵌套资源的记录 id)
+        $segments = array_values(array_filter($segments, function ($s) {
+            return !ctype_digit($s);
+        }));
+
+        if (empty($segments)) {
+            return $breadcrumb;
+        }
+
+        $path = implode('/', $segments);
+
+        // 按菜单 uri 匹配当前资源,标题与父级链取自业务菜单(中文系统即中文)
+        $menuClass = config('admin.database.menu_model');
+
+        $menu = $menuClass::query()
+            ->where(function ($query) use ($path) {
+                $query->where('uri', $path)->orWhere('uri', '/'.$path);
+            })
+            ->first();
+
+        if ($menu) {
+            $chain = [];
+            $parentId = $menu->parent_id;
+            $guard = 0;
+
+            while ($parentId && $guard++ < 10) {
+                $parent = $menuClass::query()->find($parentId);
+
+                if (!$parent) {
+                    break;
+                }
+
+                // 父级与当前菜单归一后同名(业务常见"分组名=子菜单名")则跳过,防冗余重复
+                if (trim(strtolower((string) $parent->title)) !== trim(strtolower((string) $menu->title))) {
+                    array_unshift($chain, $parent->title);
+                }
+
+                $parentId = $parent->parent_id;
+            }
+
+            foreach ($chain as $title) {
+                $breadcrumb[] = ['text' => $this->menuTitle($title)];
+            }
+
+            $breadcrumb[] = ['text' => $this->menuTitle($menu->title), 'url' => $menu->uri];
+        } else {
+            $breadcrumb[] = ['text' => ucfirst(end($segments))];
+        }
+
+        if ($action) {
+            $breadcrumb[] = ['text' => trans('admin.'.$action)];
+        }
+
+        return $breadcrumb;
+    }
+
+    /**
+     * 菜单标题转译:与侧栏菜单一致(admin.menu_titles.{title 归一}),无映射则原样。
+     *
+     * @param string $title
+     *
+     * @return string
+     */
+    protected function menuTitle(string $title): string
+    {
+        $key = trim(str_replace(' ', '_', strtolower($title)));
+
+        return \Illuminate\Support\Facades\Lang::has('admin.menu_titles.'.$key)
+            ? trans('admin.menu_titles.'.$key)
+            : $title;
     }
 }
