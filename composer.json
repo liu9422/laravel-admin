@@ -18,13 +18,6 @@
         "symfony/dom-crawler": "~3.1|~4.0|~5.0|~6.0|~7.0",
         "laravel/framework": ">=11.0"
     },
-    "require-dev": {
-        "laravel/laravel": ">=5.5",
-        "fzaninotto/faker": "~1.4",
-        "intervention/image": "~2.3",
-        "laravel/browser-kit-testing": "^6.0",
-        "spatie/phpunit-watcher": "^1.22.0"
-    },
     "autoload": {
         "psr-4": {
             "Encore\\Admin\\": "src/"
@@ -32,18 +25,6 @@
         "files": [
             "src/helpers.php"
         ]
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Tests\\Models\\": "tests/models",
-            "Tests\\Controllers\\": "tests/controllers"
-        },
-        "classmap": [
-            "tests/TestCase.php"
-        ]
-    },
-    "scripts": {
-        "test": "./vendor/bin/phpunit"
     },
     "suggest": {
         "intervention/image": "Required to handling and manipulation upload images (~2.3).",
