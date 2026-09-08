@@ -124,15 +124,9 @@ class File extends Field
      */
     protected function uploadAndDeleteOriginal(UploadedFile $file)
     {
-        $this->renameIfExists($file);
-
-        $path = null;
-
-        if (!is_null($this->storagePermission)) {
-            $path = $this->storage->putFileAs($this->getDirectory(), $file, $this->name, $this->storagePermission);
-        } else {
-            $path = $this->storage->putFileAs($this->getDirectory(), $file, $this->name);
-        }
+        // 统一走 UploadField::upload()(含 CVE-2023-24249 扩展名防护),
+        // 避免两处 putFileAs 分叉漏检
+        $path = $this->upload($file);
 
         $this->destroy();
 

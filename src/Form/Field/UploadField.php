@@ -6,6 +6,7 @@ use Encore\Admin\Form;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 trait UploadField
@@ -88,6 +89,34 @@ trait UploadField
         'pdf'    => '/^(pdf)$/i',
         'flash'  => '/^(swf)$/i',
     ];
+
+    /**
+     * 默认拒绝落盘的服务器脚本扩展名(CVE-2023-24249 防护)。
+     *
+     * 配置 `admin.upload.forbidden_extensions` 存在时覆盖此清单;
+     * 设为空数组可显式关闭防护。
+     *
+     * @var array
+     */
+    protected static $forbiddenExtensions = [
+        // PHP 及衍生(PHP 主机直接执行)
+        'php', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8',
+        'phtml', 'pht', 'phts', 'phps', 'phar',
+        // 其它服务端脚本栈(同目录被其它容器/CGI 解析时)
+        'asp', 'aspx', 'ascx', 'asa', 'cer', 'cdx',
+        'jsp', 'jspx', 'jspa', 'jsw', 'jsv',
+        'cfm', 'shtml',
+    ];
+
+    /**
+     * 无论扩展名规则如何,始终拒绝写入的文件名
+     * (可改变服务器/PHP 行为的配置文件)。
+     *
+     * 配置 `admin.upload.forbidden_filenames` 存在时覆盖此清单。
+     *
+     * @var array
+     */
+    protected static $forbiddenFilenames = ['.htaccess', '.user.ini', '.htpasswd'];
 
     /**
      * @var string
@@ -421,6 +450,67 @@ trait UploadField
     }
 
     /**
+     * 拒绝把服务器可执行脚本写入磁盘(CVE-2023-24249 防护)。
+     *
+     * 校验的是"最终存储文件名"(经过 renameIfExists/uniqueName/sequenceName/
+     * 业务自定义 name 之后),因此覆盖全部存储路径,并天然拦截重名改写时
+     * 注入客户端扩展名的边缘情形。校验失败抛 ValidationException,走框架
+     * 标准的错误回显(表单字段红框 + 错误消息,与业务规则校验一致)。
+     *
+     * @param string|null $name
+     *
+     * @throws ValidationException
+     *
+     * @return void
+     */
+    protected function assertSafeStoreName($name)
+    {
+        $forbidden = config('admin.upload.forbidden_extensions');
+
+        if (!is_array($forbidden)) {
+            $forbidden = static::$forbiddenExtensions;
+        }
+
+        if (empty($forbidden)) {
+            return;
+        }
+
+        $forbiddenFilenames = config('admin.upload.forbidden_filenames');
+
+        if (!is_array($forbiddenFilenames)) {
+            $forbiddenFilenames = static::$forbiddenFilenames;
+        }
+
+        $forbidden = array_map('strtolower', $forbidden);
+        $forbiddenFilenames = array_map('strtolower', $forbiddenFilenames);
+
+        // Windows 语义的尾部 NUL/点/空格绕过:"shell.php\x00"、"shell.php."、"shell.php "
+        $basename = strtolower(basename(str_replace('\\', '/', (string) $name)));
+        $basename = rtrim($basename, "\x00\t .");
+
+        $extension = (string) pathinfo($basename, PATHINFO_EXTENSION);
+
+        if (in_array($extension, $forbidden, true)
+            || in_array($basename, $forbiddenFilenames, true)) {
+            $key = 'admin.upload_forbidden_extension';
+
+            $message = trans($key, ['name' => $basename]);
+
+            if ($message === $key) {
+                // 语言文件按需发布、不会随包升级覆盖:未发布新键的存量系统
+                // 在此回退到内置文案,避免用户看到原始键名
+                $message = str_starts_with(app()->getLocale(), 'zh')
+                    ? "不允许上传 {$basename}(禁止的服务器脚本类型)"
+                    : "Uploading {$basename} is not allowed (server script type)";
+            }
+
+            throw ValidationException::withMessages([
+                $this->getErrorKey() => $message,
+            ]);
+        }
+    }
+
+    /**
      * Upload file and delete original file.
      *
      * @param UploadedFile $file
@@ -430,6 +520,8 @@ trait UploadField
     protected function upload(UploadedFile $file)
     {
         $this->renameIfExists($file);
+
+        $this->assertSafeStoreName($this->name);
 
         if (!is_null($this->storagePermission)) {
             return $this->storage->putFileAs($this->getDirectory(), $file, $this->name, $this->storagePermission);

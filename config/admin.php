@@ -160,6 +160,34 @@ return [
             'image' => 'images',
             'file'  => 'files',
         ],
+
+        /*
+        |----------------------------------------------------------------------
+        | CVE-2023-24249 防护:拒绝落盘的服务器脚本扩展名
+        |----------------------------------------------------------------------
+        |
+        | 上传字段(File/Image/MultipleFile/MultipleImage)在落盘前校验最终
+        | 存储文件名的扩展名,命中即拒绝并回显错误。校验的是"最终存储名",
+        | 因此 uniqueName/sequenceName/业务自定义 name 等所有路径都被覆盖。
+        |
+        | - 未重新发布本配置的存量系统自动沿用框架内置清单(与下方一致);
+        | - 设为空数组 [] 可关闭防护;
+        | - 业务确需上传某类文件时,在各自系统的 config 中增删条目即可。
+        |
+        */
+
+        'forbidden_extensions' => [
+            // PHP 及衍生(PHP 主机直接执行)
+            'php', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8',
+            'phtml', 'pht', 'phts', 'phps', 'phar',
+            // 其它服务端脚本栈(同目录被其它容器/CGI 解析时)
+            'asp', 'aspx', 'ascx', 'asa', 'cer', 'cdx',
+            'jsp', 'jspx', 'jspa', 'jsw', 'jsv',
+            'cfm', 'shtml',
+        ],
+
+        // 无论扩展名规则如何,始终拒绝写入的文件名(服务器配置文件)。
+        'forbidden_filenames' => ['.htaccess', '.user.ini', '.htpasswd'],
     ],
 
     /*

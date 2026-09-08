@@ -71,6 +71,7 @@ return [
     'choose'                => '选择',
     'choose_file'           => '选择文件',
     'choose_image'          => '选择图片',
+    'upload_forbidden_extension' => '不允许上传 :name(禁止的服务器脚本类型)',
     'more'                  => '更多',
     'deny'                  => '无权访问',
     'administrator'         => '管理员',

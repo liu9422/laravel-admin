@@ -71,6 +71,7 @@ return [
     'choose'                => 'Choose',
     'choose_file'           => 'Select file',
     'choose_image'          => 'Select image',
+    'upload_forbidden_extension' => 'Uploading :name is not allowed (server script type)',
     'more'                  => 'More',
     'deny'                  => 'Permission denied',
     'administrator'         => 'Administrator',
