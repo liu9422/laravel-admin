@@ -15,39 +15,139 @@ class BelongsToMany extends MultipleSelect
 
     var grid = $('.belongstomany-{$this->column()}');
     var modal = $('#{$this->modalID}');
-    var table = grid.find('.grid-table');
-    var selected = $("{$this->getElementClassSelector()}").val() || [];
-    var rows = {};
+    var viewBody = grid.find('.btm-body');
+    var pagerBox = grid.find('.btm-pager');
+    var countBox = grid.find('.btm-count');
+    var sourceBody = grid.find('.btm-source .grid-table tbody');
+    var selectEl = $("{$this->getElementClassSelector()}");
+    var emptyHtml = grid.find('template.empty').html();
 
-    table.find('tbody').children().each(function (index, tr) {
-        if ($(tr).find('.grid-row-remove').length > 0) {
-            rows[$(tr).find('.grid-row-remove').data('key')] = $(tr);
+    var PAGE_SIZE = 10;
+    var selected = [];
+    var rows = {};   // id(String) -> 行元素(来自服务端隐藏源或弹窗勾选行)
+    var page = 0;
+
+    // 行进入已选区前的统一处理(弹窗勾选行含勾选列/隐藏移除按钮;幂等)
+    var cleanRow = function (tr) {
+        if (tr.data('btm-clean')) {
+            return tr;
+        }
+
+        tr.data('btm-clean', 1);
+        tr.find('td.column-__modal_selector__').remove();
+        tr.find('.grid-row-remove').removeClass('hide');
+
+        return tr;
+    };
+
+    // 同步已选值到原生多选 select(无 select2 UI,大关联不渲染标签)
+    var syncSelect = function () {
+        var known = {};
+
+        selectEl.find('option').each(function () {
+            known[this.value] = 1;
+        });
+
+        selected.forEach(function (id) {
+            if (!known[id]) {
+                selectEl.append($('<option>').val(id).text(id));
+                known[id] = 1;
+            }
+        });
+
+        selectEl.val(selected);
+        countBox.text(selected.length);
+    };
+
+    // 渲染当前页(只挂 20 行 DOM,其余行保留在内存)
+    var renderPage = function () {
+        viewBody.empty();
+
+        if (selected.length === 0) {
+            viewBody.append(emptyHtml);
+            pagerBox.empty();
+            return;
+        }
+
+        var totalPages = Math.max(1, Math.ceil(selected.length / PAGE_SIZE));
+
+        if (page >= totalPages) {
+            page = totalPages - 1;
+        }
+
+        var slice = selected.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+        var frag = document.createDocumentFragment();
+
+        slice.forEach(function (id) {
+            var tr = rows[id];
+
+            if (!tr) {
+                return;
+            }
+
+            frag.appendChild(cleanRow(tr)[0]);
+        });
+
+        viewBody[0].appendChild(frag);
+
+        var pager = '<span style="margin-right:10px">第 ' + (page + 1) + ' / ' + totalPages + ' 页</span>' +
+            '<a href="javascript:void(0)" class="btm-prev" style="margin-right:6px">上一页</a>' +
+            '<a href="javascript:void(0)" class="btm-next">下一页</a>';
+
+        pagerBox.html(pager);
+        pagerBox.find('.btm-prev').toggleClass('disabled', page === 0);
+        pagerBox.find('.btm-next').toggleClass('disabled', page >= totalPages - 1);
+    };
+
+    // 初始:编辑回显 —— 服务端隐藏源整表行收进内存(不渲染);值取已选行 key
+    sourceBody.find('tr').each(function () {
+        var tr = $(this);
+        var rm = tr.find('.grid-row-remove');
+
+        if (rm.length > 0) {
+            var key = rm.data('key').toString();
+
+            rows[key] = tr;
+            selected.push(key);
+            tr.detach();
         }
     });
 
+    renderPage();
+    syncSelect();
+
     // open modal
-    grid.find('.select-relation').click(function (e) {
-        $('#{$this->modalID}').modal('show');
+    grid.on('click', '.select-relation', function (e) {
+        modal.modal('show');
         e.preventDefault();
     });
 
-    // remove row
-    grid.on('click', '.grid-row-remove', function () {
-        val = $(this).data('key').toString();
+    // 分页
+    pagerBox.on('click', '.btm-prev', function () {
+        if (page > 0) {
+            page--;
+            renderPage();
+        }
+    });
+    pagerBox.on('click', '.btm-next', function () {
+        if ((page + 1) * PAGE_SIZE < selected.length) {
+            page++;
+            renderPage();
+        }
+    });
 
-        var index = selected.indexOf(val);
+    // remove row(移除后重绘当前页,保持分页状态自洽)
+    viewBody.on('click', '.grid-row-remove', function () {
+        var key = $(this).data('key').toString();
+        var index = selected.indexOf(key);
+
         if (index !== -1) {
-           selected.splice(index, 1);
-           delete rows[val];
+            selected.splice(index, 1);
+            delete rows[key];
         }
 
-        $(this).parents('tr').remove();
-        $("{$this->getElementClassSelector()}").val(selected);
-
-        if (selected.length == 0) {
-            var empty = $('.belongstomany-{$this->column()}').find('template.empty').html();
-            table.find('tbody').append(empty);
-        }
+        renderPage();
+        syncSelect();
     });
 
     var load = function (url) {
@@ -67,31 +167,15 @@ class BelongsToMany extends MultipleSelect
         });
     };
 
+    // 弹窗确定:同步值并回到第一页(行已存内存,不再整批 append 进 DOM)
     var update = function (callback) {
+        syncSelect();
+        page = 0;
+        renderPage();
 
-        $("{$this->getElementClassSelector()}")
-            .select2({data: selected})
-            .val(selected)
-            .trigger('change')
-            .next()
-            .addClass('hide');
-
-        table.find('tbody').empty();
-
-        Object.values(rows).forEach(function (row) {
-            row.find('td:last a').removeClass('hide');
-            row.find('td.column-__modal_selector__').remove();
-            table.find('tbody').append(row);
-        });
-
-        if (selected.length == 0) {
-            var empty = $('.belongstomany-{$this->column()}').find('template.empty').html();
-            table.find('tbody').append(empty);
-        } else {
-            table.find('.empty-grid').parent().remove();
+        if (callback) {
+            callback();
         }
-
-        callback();
     };
 
     modal.on('show.bs.modal', function (e) {

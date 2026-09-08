@@ -112,11 +112,7 @@ abstract class Selectable
 
         $this->model()->whereKey(Arr::wrap($values));
 
-        $this->disableFeatures()->disableFilter();
-
-        if (!$this->multiple) {
-            $this->disablePagination();
-        }
+        $this->disableFeatures()->disableFilter()->disablePagination();
 
         $this->tools(function (Tools $tools) {
             $tools->append(new Grid\Selectable\BrowserBtn());

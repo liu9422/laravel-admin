@@ -748,8 +748,7 @@ class Form implements Renderable
      *
      * @return void
      */
-    protected function updateRelation($relationsData)
-    {
+    protected function updateRelation($relationsData)    {
         foreach ($relationsData as $name => $values) {
             if (!method_exists($this->model, $name)) {
                 continue;
@@ -771,7 +770,7 @@ class Form implements Renderable
                 case $relation instanceof Relations\BelongsToMany:
                 case $relation instanceof Relations\MorphToMany:
                     if (isset($prepared[$name])) {
-                        $relation->sync($prepared[$name]);
+                        $this->syncBelongsToMany($relation, $prepared[$name]);
                     }
                     break;
                 case $relation instanceof Relations\HasOne:
@@ -849,6 +848,60 @@ class Form implements Renderable
                     }
                     break;
             }
+        }
+    }
+
+    /**
+     * Sync a BelongsToMany/MorphToMany relation with bulk pivot writes.
+     *
+     * Eloquent's sync() attaches new relations one INSERT at a time, which makes
+     * large selections (hundreds/thousands of rows) take tens of seconds. Attach
+     * accepts an id array and writes a single multi-row INSERT instead, so the
+     * diff is computed here (same semantics as sync: rows not in the new set are
+     * detached, new ones attached) and both sides are batched.
+     *
+     * Falls back to Eloquent sync() when the value contains per-id pivot
+     * attributes (array payloads) or is not a plain scalar id list, so the
+     * advanced sync() features keep working untouched.
+     *
+     * @param Relations\BelongsToMany|Relations\MorphToMany $relation
+     * @param mixed                                         $value
+     *
+     * @return void
+     */
+    protected function syncBelongsToMany($relation, $value)
+    {
+        $value = (array) $value;
+
+        $plainIds = Arr::where($value, function ($item) {
+            return is_scalar($item) || is_null($item);
+        });
+
+        if (count($plainIds) !== count($value)) {
+            // 含每关联 pivot 属性等复杂载荷,交给 Eloquent sync 完整语义
+            $relation->sync($value);
+
+            return;
+        }
+
+        $ids = array_values(array_unique(array_filter($plainIds, function ($id) {
+            return $id !== null && $id !== '';
+        })));
+
+        $key = $relation->getRelatedPivotKeyName();
+
+        $current = $relation->newPivotQuery()->pluck($key)->all();
+
+        $detach = array_values(array_diff($current, $ids));
+        $attach = array_values(array_diff($ids, $current));
+
+        if (!empty($detach)) {
+            $relation->detach($detach);
+        }
+
+        if (!empty($attach)) {
+            // 批量多值 INSERT(touch 一次,语义与 sync 一致)
+            $relation->attach($attach);
         }
     }
 
