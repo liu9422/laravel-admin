@@ -21,13 +21,27 @@
 
 ## 存量系统接入
 
+**方式一:CNB Composer 制品库(推荐,生产用)**——本仓库推送 tag(如 `1.8.99`)后由 `.cnb.yml` 流水线自动打包发布,存量系统配置后 `composer update` 即换装:
+
+```bash
+# 认证(全局,一次):访问令牌见 CNB「创建访问令牌」
+composer config http-basic.composer.cnb.cool cnb <CNB_TOKEN> -g
+```
+
+```json
+"repositories": [{ "type": "composer", "url": "<CNB_COMPOSER_URL>" }],
+"require":      { "liu9422/laravel-admin": "1.8.99" }
+```
+
+**方式二:path 仓库(开发联调用)**
+
 ```json
 "repositories": [{ "type": "path", "url": "../laravel-admin" }],
 "require":      { "liu9422/laravel-admin": "*" }
 ```
 
-- `replace` 已顶替 `encore/laravel-admin`,`laravel-admin-ext/*` 扩展的依赖解析不受影响
-- vcs 模式发版:删除本包 composer.json 的 `version` 字段,改用 git tag
+- `replace` 已顶替 `encore/laravel-admin`,`laravel-admin-ext/*` 扩展的依赖解析不受影响;**不要**按 CNB 文档禁用 packagist(`repos.packgist false`)——扩展包仍需从 packagist 解析
+- 需 Composer 2.x(CNB 制品库不再支持 1.x)
 - 新增的 config / lang 键均有内置回退,不重新 `vendor:publish` 也能生效;需要发布时:`vendor:publish --tag=laravel-admin-assets --tag=laravel-admin-config --tag=laravel-admin-lang`
 
 ## License

@@ -1,0 +1,15 @@
+# CNB 云原生构建:推送 tag 时自动打包并发布 Composer 制品(tag 名 = 制品版本号)
+# 首次使用前:将下方 CNB_COMPOSER_URL 占位符替换为实际制品库地址
+# (Composer 制品库属组织层级:CNB 右上角「+」创建 → 制品库设置 → 基础设置 里复制地址)
+# tag 命名请用纯语义版本号(如 1.8.99,不带 v 前缀),CNB_TOKEN 由 CNB 构建环境自动注入
+$:
+  tag_push:
+    - docker:
+        image: docker.cnb.cool/examples/language/php-8.4
+        stages:
+          - name: setup netrc
+            script: printf "machine composer.cnb.cool\nlogin cnb\npassword %s\n" "${CNB_TOKEN}" > ~/.netrc
+          - name: archive
+            script: composer archive -f zip --file package
+          - name: upload
+            script: curl --netrc -T package.zip "https://composer.cnb.cool/vosbyte.com/lcj/common.service/laravel-admin-frankenphp/-/packages/upload/liu9422/laravel-admin/${CNB_BRANCH}"
