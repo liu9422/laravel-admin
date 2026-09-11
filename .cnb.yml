@@ -8,4 +8,5 @@ $:
           - name: archive
             script: composer archive -f zip --file package
           - name: upload
-            script: curl --netrc -T package.zip "https://composer.cnb.cool/vosbyte.com/lcj/common.service/laravel-admin-frankenphp/-/packages/upload/liu9422/laravel-admin/${CNB_BRANCH}"
+            # --fail-with-body:HTTP 4xx/5xx 时非零退出并输出服务端响应,避免上传失败被静默吞掉
+            script: curl --netrc --fail-with-body -T package.zip "https://composer.cnb.cool/vosbyte.com/lcj/common.service/laravel-admin-frankenphp/-/packages/upload/liu9422/laravel-admin/${CNB_BRANCH}"
