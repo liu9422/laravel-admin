@@ -6,37 +6,37 @@
 
 - 运行环境升级到 **PHP 8.2 / Laravel 12**,移除 doctrine/dbal 依赖
 - 修复 **CVE-2023-24249**(上传字段任意文件上传):落盘前校验最终存储文件名,拒绝 php/phtml/phar/asp/jsp 等服务器脚本扩展名及 `.htaccess`/`.user.ini`/`.htpasswd`(清单可在 `admin.upload.forbidden_extensions` 配置)
-- 前端资产升级:jQuery 3.7.1、Bootstrap 3.4.1、select2 4.0.13、moment 2.29.4、CKEditor 4.22.1(本地托管)、sweetalert2 11、bootstrap-fileinput 5.5.4
+- 前端资产升级,消除 **10 个已知 CVE**(对照见下表):jQuery 3.7.1、Bootstrap 3.4.1、select2 4.0.13、moment 2.29.4、CKEditor 4.22.1(本地托管)、sweetalert2 11、bootstrap-fileinput 5.5.4
 - 新增 `SecurityHeaders` 中间件,默认输出 nosniff / Referrer-Policy / X-Frame-Options 安全响应头(`admin.security_headers` 可配)
 - 管理员封禁:`admin_users.status` 字段 + 登录/请求双重拦截
 - 面包屑语义化:按菜单标题生成「首页 / 父菜单链 / 动作」,替代 URL 段直拼
 - `belongsToMany` 大关联:批量同步性能优化(2000 关联 35s → 240ms)+ 已选区前端分页
 - 内置用户/角色/权限/日志控制器:筛选与汉化优化
 
-## 母项目升级步骤
+### 前端 CVE 修复对照
+
+| CVE | 组件 | 旧版本(受影响) | 修复版本 | 漏洞类型 |
+|---|---|---|---|---|
+| CVE-2019-11358 | jQuery | 2.1.4 | 3.4.0 | 原型污染(`jQuery.extend`) |
+| CVE-2020-11022 | jQuery | 2.1.4 | 3.5.0 | 原型污染(`jQuery.extend`) |
+| CVE-2020-11023 | jQuery | 2.1.4 | 3.5.0 | XSS(`htmlPrefilter` 正则绕过) |
+| CVE-2016-10735 | Bootstrap | 3.3.4 | 3.4.0 | XSS(Collapse `data-parent`) |
+| CVE-2018-14041 | Bootstrap | 3.3.4 | 3.4.0 | XSS(ScrollSpy `data-target`) |
+| CVE-2018-20676 | Bootstrap | 3.3.4 | 3.4.0 | XSS(Tooltip `template`) |
+| CVE-2018-20677 | Bootstrap | 3.3.4 | 3.4.0 | XSS(Collapse/Affix 组件配置) |
+| CVE-2019-8331 | Bootstrap | 3.3.4 | 3.4.1 | XSS(tooltip/popover/carousel/collapse,补全 3.4.0 的不完整修复) |
+| CVE-2022-24785 | moment | 2.10.6 | 2.29.2 | 路径穿越(动态加载 locale,服务端场景) |
+| CVE-2022-31129 | moment | 2.10.6 | 2.29.4 | ReDoS(正则拒绝服务) |
+
+> jQuery 2.x 早已停止维护,以上漏洞只在 3.x 修复。CKEditor 由 CDN 4.5.10(2016)改为本地托管 **4.22.1**(LTS 安全版),涵盖七年累积安全修复;select2 4.0.3→4.0.13、sweetalert2 7.26.12→11、bootstrap-fileinput 4.5.2→5.5.4 为常规升级,无已知 CVE。
+
+## 项目升级步骤
 
 ### 1. 替换依赖
 
-**方式一:CNB Composer 制品库(推荐,生产用)**——本仓库推送 tag(如 `1.9.0`)后由 `.cnb.yml` 流水线自动打包发布:
-
-```bash
-# 认证(全局,一次):访问令牌见 CNB「创建访问令牌」
-composer config http-basic.composer.cnb.cool cnb <CNB_TOKEN> -g
-```
-
 ```json
-"repositories": [{ "type": "composer", "url": "https://composer.cnb.cool/vosbyte.com/lcj/common.service/laravel-admin-frankenphp/-/packages" }],
 "require":      { "liu9422/laravel-admin": "1.9.0" }
 ```
-
-**方式二:path 仓库(本地联调用)**
-
-```json
-"repositories": [{ "type": "path", "url": "../laravel-admin" }],
-"require":      { "liu9422/laravel-admin": "*" }
-```
-
-记得同时从 `require` 中删除原有的 `encore/laravel-admin` 条目。
 
 ### 2. 更新依赖
 
@@ -73,8 +73,7 @@ php artisan vendor:publish --tag=laravel-admin-config --tag=laravel-admin-lang
 
 ### 注意事项
 
-- 需 Composer 2.x(CNB 制品库不再支持 1.x)
-- **不要**按 CNB 文档禁用 packagist——`laravel-admin-ext/*` 扩展包仍需从 packagist 解析
+- 需 Composer 2.x
 
 ## License
 

@@ -5,6 +5,11 @@
     "version": "1.9.0",
     "keywords": ["laravel", "admin", "grid", "form"],
     "license": "MIT",
+    "homepage": "https://github.com/liu9422/laravel-admin",
+    "support": {
+        "issues": "https://github.com/liu9422/laravel-admin/issues",
+        "source": "https://github.com/liu9422/laravel-admin"
+    },
     "authors": [
         {
             "name": "liu9422"
