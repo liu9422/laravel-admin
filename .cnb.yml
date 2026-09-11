@@ -2,11 +2,11 @@ $:
   tag_push:
     - docker:
         image: docker.cnb.cool/examples/language/php-8.4
-        stages:
-          - name: setup netrc
-            script: printf "machine composer.cnb.cool\nlogin cnb\npassword %s\n" "${CNB_TOKEN}" > ~/.netrc
-          - name: archive
-            script: composer archive -f zip --file package
-          - name: upload
-            # --fail-with-body:HTTP 4xx/5xx 时非零退出并输出服务端响应,避免上传失败被静默吞掉
-            script: curl --netrc --fail-with-body -T package.zip "https://composer.cnb.cool/vosbyte.com/lcj/common.service/laravel-admin-frankenphp/-/packages/upload/liu9422/laravel-admin/${CNB_BRANCH}"
+      stages:
+        - name: setup netrc
+          script: printf "machine composer.cnb.cool\nlogin cnb\npassword %s\n" "${CNB_TOKEN}" > ~/.netrc
+        - name: archive
+          script: composer archive -f zip --file package
+        - name: upload
+          # --fail-with-body:HTTP 4xx/5xx 时非零退出并输出服务端响应,避免上传失败被静默吞掉
+          script: echo "publishing ${CNB_BRANCH}" && curl --netrc --fail-with-body -T package.zip "https://composer.cnb.cool/vosbyte.com/lcj/common.service/laravel-admin-frankenphp/-/packages/upload/liu9422/laravel-admin/${CNB_BRANCH}"
