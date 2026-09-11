@@ -10,10 +10,11 @@ class Bootstrap
 {
     public function handle(Request $request, Closure $next)
     {
-        // Class statics survive between requests on resident-memory runtimes
-        // (Laravel Octane, FrankenPHP worker mode, `php artisan serve`);
-        // start every request from a clean slate.
-        \Encore\Admin\Admin::flushState();
+
+        // Fill in translation keys that the app's published lang files
+        // predate (they are install-time copies, never refreshed by package
+        // updates).
+        \Encore\Admin\Admin::mergeLangFallback();
 
         Admin::bootstrap();
 

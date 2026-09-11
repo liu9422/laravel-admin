@@ -388,10 +388,9 @@ class Admin
      *
      * Class statics survive between requests on resident-memory runtimes
      * (Laravel Octane, FrankenPHP worker mode, `php artisan serve`), so any
-     * state collected during a request leaks into the next one. This is
-     * called at the start of every admin request by
-     * {@see \Encore\Admin\Middleware\Bootstrap}, and after each request when
-     * running under Octane.
+     * state collected during a request leaks into the next one. This runs
+     * after each request when running under Octane, via the
+     * RequestTerminated listener registered in AdminServiceProvider.
      *
      * @return void
      */
@@ -432,6 +431,72 @@ class Admin
         Facade::clearResolvedInstance(static::class);
 
         app()->forgetInstance(static::class);
+    }
+
+    /**
+     * Fill in admin-group translation keys missing from the app's published
+     * lang files, using the package's bundled translations.
+     *
+     * `admin.*` lines resolve from the app's `lang/<locale>/admin.php` — a
+     * copy made by `vendor:publish` at install time. Package updates never
+     * refresh it (`vendor:publish` skips existing files, and `--force` would
+     * clobber app-side customizations such as menu_titles), so keys added by
+     * this fork would surface as raw keys on existing installations. Missing
+     * keys are merged into the translator here: app-published values always
+     * win, and nothing is written to disk.
+     *
+     * Called at the start of every admin request by
+     * {@see \Encore\Admin\Middleware\Bootstrap}; merged once per translator
+     * instance, so resident-memory runtimes pay the cost only once.
+     *
+     * @return void
+     */
+    public static function mergeLangFallback()
+    {
+        static $merged = null;
+
+        $translator = app('translator');
+
+        $merged ??= new \WeakMap();
+        $merged[$translator] ??= [];
+
+        foreach (array_unique(array_filter([
+            $translator->getLocale(),
+            app('config')->get('app.fallback_locale'),
+        ])) as $locale) {
+            if (in_array($locale, $merged[$translator], true)) {
+                continue;
+            }
+
+            $merged[$translator][] = $locale;
+
+            $file = __DIR__.'/../resources/lang/'.$locale.'/admin.php';
+
+            if (!is_file($file)) {
+                continue;
+            }
+
+            $package = require $file;
+
+            // Load the group from the app's lang path before writing
+            // anything: addLines() marks the group as loaded, so writing
+            // first would shadow every app-published key of that locale.
+            $translator->get('admin.'.array_key_first($package), [], $locale, false);
+
+            $missing = [];
+
+            foreach ($package as $key => $value) {
+                // Probe the translator (not the filesystem) so app-side lines
+                // resolved through a custom loader still win.
+                if ($translator->get('admin.'.$key, [], $locale, false) === 'admin.'.$key) {
+                    $missing['admin.'.$key] = $value;
+                }
+            }
+
+            if ($missing) {
+                $translator->addLines($missing, $locale);
+            }
+        }
     }
 
     /**
