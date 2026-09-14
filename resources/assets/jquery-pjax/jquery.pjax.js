@@ -182,6 +182,12 @@ function pjax(options) {
 
   var context = options.context = findContainerFor(options.container)
 
+  if (!context.selector) {
+    context.selector = typeof options.container === 'string'
+      ? options.container
+      : (context.attr('id') ? '#' + context.attr('id') : '')
+  }
+
   // We want the browser to maintain two separate internal caches: one
   // for pjax'd partial page loads and one for normal page loads.
   // Without adding this secret parameter, some browsers will often

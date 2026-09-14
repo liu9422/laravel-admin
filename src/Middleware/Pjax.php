@@ -32,9 +32,11 @@ class Pjax
         }
 
         try {
-            // jquery-pjax always sends the container header; fall back to the
-            // default container so header-less pjax requests still work.
-            $container = $request->header('X-PJAX-CONTAINER') ?: '#pjax-container';
+            $container = $request->header('X-PJAX-CONTAINER');
+
+            if (!$container || $container === 'undefined') {
+                $container = '#pjax-container';
+            }
 
             $this->filterResponse($response, $container)
                 ->setUriHeader($response, $request);
